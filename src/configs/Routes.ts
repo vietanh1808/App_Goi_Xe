@@ -1,0 +1,16 @@
+export const ROUTES = {
+  homeSaler: 'Trang chủ',
+  profileSaler: 'Tài khoản',
+  destinationSaler: 'DestinationSaler',
+  login: 'Login',
+  mainSaler: 'MainSaler',
+  register: 'Register',
+  mainDriver: 'Danh sách công việc',
+  detailUser: 'Thông tin người dùng',
+  detaiBookingSaler: 'Thông tin đơn hàng',
+  detaiBookingDriver: 'Chi tiết đơn hàng',
+  onWorkDriver: 'onWorkDriver',
+  routeToDeparture: 'routeToDeparture',
+  followBooking: 'followBooking',
+  mainNavigator: 'MainNavigator',
+};
