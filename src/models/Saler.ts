@@ -2,8 +2,9 @@ import {Region} from 'react-native-maps';
 
 export interface IUserLocation {
   geoLocation: {region: Region; place_name: string};
-  userInfo: string;
+  idUserInfo: string;
   timestamp: number;
+  id: string;
 }
 
 export interface IUserParams {
@@ -16,6 +17,7 @@ export interface IUserParams {
   birthday: string;
   sex: string;
   phone: string;
+  carType: string;
 }
 
 export interface IUpdateForm {

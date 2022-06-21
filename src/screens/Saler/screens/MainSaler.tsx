@@ -7,9 +7,6 @@
 import {
   View,
   Text,
-  StatusBar,
-  Dimensions,
-  Touchable,
   Pressable,
   StyleSheet,
   TouchableOpacity,
@@ -17,74 +14,87 @@ import {
   ToastAndroid,
 } from 'react-native';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {ICamera} from '../../../models/Maps';
 import {
   ACCESS_TOKEN_MAP,
   CloudBookingData,
   COLOR_MAIN_TOPIC,
+  defaultCamera,
   DEFAULT_ZOOM_MAP,
   HEIGHT_WINDOW,
-  JOB_COLLECTION,
-  MAP_API_KEY,
-  MAX_ZOOM_MAP,
-  MIN_ZOOM_MAP,
   PITCH_MAP,
   statusBar,
 } from '../../../constants';
 import Donut from '../../../components/Donut';
 import CloudFlatList from '../../../components/CloudFlatList';
 import {ROUTES} from '../../../configs/Routes';
-import {useNavigation, useRoute} from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 // import auth from '@react-native-firebase/auth';
-import {useDispatch, useSelector} from 'react-redux';
+import {useSelector} from 'react-redux';
 import {AppState, useAppDispatch} from '../../../redux/reducer';
 import {standard_custom_map} from '../../../configs/mapStyle';
 import MapView, {
   Camera,
   Marker,
-  MarkerAnimated,
   MarkerProps,
   PROVIDER_GOOGLE,
   Region,
 } from 'react-native-maps';
-import {setBooking, setStatusBooking} from '../../../redux/reducers/jobReducer';
-import MapViewDirections from 'react-native-maps-directions';
+import {resetBooking, setBooking} from '../../../redux/reducers/jobReducer';
+import {distance, point} from '@turf/turf';
 
-const origin = {latitude: 21.0031, longitude: 105.8201};
-const destination = {latitude: 21.0277, longitude: 105.8341};
+const money_per_km = 5000;
 
 const MainSaler = () => {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
   const booking = useSelector((app: AppState) => app.job.jobState);
-  const job = useSelector((app: AppState) => app.job);
+  const user = useSelector((state: AppState) => state.profile);
   const currentPicker = useSelector(
     (state: AppState) => state.saler.currentPickLocation,
   );
-
   const [loading, setLoading] = useState(false);
   const [marker, setMarker] = useState<MarkerProps>({
     description: '1',
     coordinate: {latitude: 0, longitude: 0},
     title: '1',
   });
-  const [camera, setCamera] = useState<Camera>({
-    center: {
-      latitude: 37.78825,
-      longitude: -122.4324,
-    },
-    pitch: PITCH_MAP,
-    altitude: 0,
-    zoom: DEFAULT_ZOOM_MAP,
-    heading: 10,
-  });
+  const [camera, setCamera] = useState<Camera>(defaultCamera);
 
   const onBooking = async () => {
     if (!booking.departure.place_name || !booking.destination.place_name) {
       ToastAndroid.show('Bạn cần điền đủ thông tin form...', 3000);
       return;
     }
-    navigation.navigate(ROUTES.detaiBookingSaler as never);
+    setupBooking();
+  };
+  const setupBooking = async () => {
+    setLoading(true);
+    const departure = booking.departure.region;
+    const destination = booking.destination.region;
+    const dataJson = await fetch(
+      `https://api.mapbox.com/directions-matrix/v1/mapbox/driving/${departure.longitude},${departure.latitude};${destination.longitude},${destination.latitude}?access_token=${ACCESS_TOKEN_MAP}`,
+    );
+    const data = await dataJson.json();
+    setLoading(false);
+    if (data) {
+      const fromPoint = point([departure.longitude, departure.latitude]);
+      const toPoint = point([destination.longitude, destination.latitude]);
+      const m_distance = distance(fromPoint, toPoint, {units: 'kilometers'});
+      if (user) {
+        dispatch(
+          setBooking({
+            ...booking,
+            distance: parseFloat(m_distance.toFixed(2)),
+            fee: money_per_km * parseFloat(m_distance.toFixed(2)),
+            timestamp: new Date().getTime(),
+            booker: user.id || '',
+          }),
+        );
+        navigation.navigate(ROUTES.detaiBookingSaler as never);
+      }
+    } else {
+      ToastAndroid.show('Lấy dữ liệu khoảng cách lỗi!', 4000);
+    }
   };
 
   const onRegionChange = useCallback(
@@ -135,8 +145,9 @@ const MainSaler = () => {
     [dispatch, currentPicker],
   );
 
-  const setUserView = () => {
+  useEffect(() => {
     if (currentPicker === 'destination') {
+      console.log('Change View To Destination');
       setMarker({
         title: 'điểm đến',
         coordinate: {...booking.destination.region},
@@ -150,6 +161,7 @@ const MainSaler = () => {
         },
       });
     } else {
+      console.log('Change View To Departure');
       setMarker({
         title: 'điểm đi',
         coordinate: {...booking.departure.region},
@@ -163,14 +175,14 @@ const MainSaler = () => {
         },
       });
     }
-  };
+  }, [currentPicker]);
 
   useEffect(() => {
-    if (job.status) {
+    // dispatch(resetBooking());
+    if (booking.status) {
       navigation.navigate(ROUTES.detaiBookingSaler as never);
     }
-
-    setUserView();
+    return () => {};
   }, []);
 
   return (
@@ -197,6 +209,7 @@ const MainSaler = () => {
               pinColor={currentPicker === 'departure' ? 'blue' : 'red'}
             />
           </MapView>
+
           <View
             style={[
               styles.bookingContainer,

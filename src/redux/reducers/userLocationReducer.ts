@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {IUserLocation, IUserParams} from '../../models/Saler';
-import {initGeoLocation, initUserInfor} from '../../constants';
+import {defaultLocation, initUserInfor} from '../../constants';
 import {Region} from 'react-native-maps';
 
 export interface ILocation {
@@ -10,9 +10,10 @@ export interface ILocation {
 }
 
 export const initUserLocation: IUserLocation = {
-  userInfo: '',
-  geoLocation: {place_name: '', region: initGeoLocation},
+  idUserInfo: '',
+  geoLocation: {place_name: '', region: defaultLocation},
   timestamp: 0,
+  id: '',
 };
 
 export interface ISalerState {
@@ -45,7 +46,7 @@ const userLocationSlice = createSlice({
         userLocation: action.payload,
       };
     },
-    setIdUserLocation: (state, action: PayloadAction<string>) => {
+    setIdLocation: (state, action: PayloadAction<string>) => {
       return {
         ...state,
         id: action.payload,
@@ -56,5 +57,5 @@ const userLocationSlice = createSlice({
 
 export default userLocationSlice.reducer;
 
-export const {setCurrentPickLocation, setUserLocation, setIdUserLocation} =
+export const {setCurrentPickLocation, setUserLocation, setIdLocation} =
   userLocationSlice.actions;

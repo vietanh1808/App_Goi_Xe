@@ -6,6 +6,7 @@ export interface IRegisterForm {
   birthday: string;
   sex: string;
   phone: string;
+  carType?: string;
 }
 
 export interface IRegisterValidate {
@@ -16,4 +17,5 @@ export interface IRegisterValidate {
   birthday: string;
   sex: string;
   phone: string;
+  carType?: string;
 }

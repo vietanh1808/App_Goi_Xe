@@ -1,9 +1,9 @@
+/* eslint-disable react-native/no-inline-styles */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   ActivityIndicator,
   BackHandler,
-  Button,
   Pressable,
   StyleSheet,
   Text,
@@ -11,11 +11,7 @@ import {
   View,
 } from 'react-native';
 import React, {useCallback, useEffect, useState} from 'react';
-import {
-  StackActions,
-  useFocusEffect,
-  useNavigation,
-} from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 import MapView, {
   Camera,
   Marker,
@@ -29,55 +25,49 @@ import {
   ACCESS_TOKEN_MAP,
   BOOKER_FIELD,
   COLOR_MAIN_TOPIC,
+  defaultCamera,
   defaultLocation,
   ID_USERLOCATION_FIELD,
+  initUserInfor,
   JOB_COLLECTION,
   MAP_API_KEY,
   PITCH_MAP,
+  USER_COLLECTION,
   USER_LOCATION_COLLECTION,
 } from '../../../constants';
 import {standard_custom_map} from '../../../configs/mapStyle';
 import SelectDropdown from 'react-native-select-dropdown';
-import {
-  resetBooking,
-  setBooking,
-  setIdBooking,
-  setStatusBooking,
-} from '../../../redux/reducers/jobReducer';
+import {resetBooking, setBooking} from '../../../redux/reducers/jobReducer';
 import firestore, {
   FirebaseFirestoreTypes,
 } from '@react-native-firebase/firestore';
 import {ROUTES} from '../../../configs/Routes';
 import {setCurrentPickLocation} from '../../../redux/reducers/userLocationReducer';
+import ConfirmPayment from '../../modals/ConfirmPayment';
+import {IUserParams} from '../../../models/Saler';
+import {IJobParams} from '../../../models/Job';
 
 const m_departure = {latitude: 20.9949, longitude: 105.8907};
 const m_destination = {latitude: 20.976, longitude: 105.8803};
-const money_per_km = 5000;
 
 const BookingDetail = () => {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
   const user = useSelector((state: AppState) => state.profile);
   const job = useSelector((state: AppState) => state.job.jobState);
-  const statusBooking = useSelector((state: AppState) => state.job.status);
-  const jobId = useSelector((state: AppState) => state.job.id);
+
+  const subcriber = React.useRef();
 
   const [loading, setLoading] = useState(false);
   const [markers, setMarkers] = useState<MarkerProps[]>([]);
   const [driverLocation, setDriverLocation] = useState<MarkerProps>({
     coordinate: {...defaultLocation},
   });
-  const [camera, setCamera] = useState<Camera>({
-    center: {
-      latitude: 37.78825,
-      longitude: -122.4324,
-    },
-    pitch: PITCH_MAP,
-    altitude: 0,
-    zoom: 15,
-    heading: 10,
-  });
+  const [camera, setCamera] = useState<Camera>(defaultCamera);
   const [polylines, setPolylines] = React.useState([]);
+  const [alertDriverAccept, setAlertDriverAccept] = useState(false);
+  const [driver, setDriver] = useState<IUserParams>(initUserInfor);
+  const [driverId, setDriverId] = useState<string>('');
 
   // --------------- SET UP MAP ----------------
   const setupMapView = () => {
@@ -106,33 +96,6 @@ const BookingDetail = () => {
       heading: 10,
     });
   };
-  const setupBooking = async () => {
-    const departure = job.departure.region;
-    const destination = job.destination.region;
-    const dataJson = await fetch(
-      `https://api.mapbox.com/directions-matrix/v1/mapbox/driving/${departure.longitude},${departure.latitude};${destination.longitude},${destination.latitude}?access_token=${ACCESS_TOKEN_MAP}`,
-    );
-    const data = await dataJson.json();
-    if (data) {
-      const distances = data.sources.map((d: any) => d.distance);
-      const distance = distances.reduce((d1: any, d2: any) => {
-        return d1 + d2;
-      }, 0);
-      if (user) {
-        dispatch(
-          setBooking({
-            ...job,
-            distance: distance,
-            fee: money_per_km * Math.ceil(distance),
-            timestamp: new Date().getTime(),
-            booker: user.id || '',
-          }),
-        );
-      }
-    } else {
-      ToastAndroid.show('Lấy dữ liệu khoảng cách lỗi!', 4000);
-    }
-  };
   const fetchPolyline = async () => {
     const dataFetch = await fetch(
       `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${job.departure.region.longitude}%2C${job.departure.region.latitude}%3B${job.destination.region.longitude}%2C${job.destination.region.latitude}.json?geometries=polyline&alternatives=true&steps=true&access_token=${ACCESS_TOKEN_MAP}`,
@@ -152,10 +115,19 @@ const BookingDetail = () => {
   // --------------- EVENT CLICK ----------------
   const onConfirmBooking = async () => {
     setLoading(true);
-    const dataFetch = await firestore().collection(JOB_COLLECTION).add(job);
+    const bookingData: IJobParams = {
+      ...job,
+      status: 'created',
+      booker: user.id,
+      timestamp: new Date().getTime(),
+    };
+    dispatch(setBooking(bookingData));
+    const dataFetch = await firestore()
+      .collection(JOB_COLLECTION)
+      .add(bookingData);
     if (dataFetch.id) {
-      dispatch(setIdBooking(dataFetch.id));
-      dispatch(setStatusBooking('created'));
+      const newData = {...bookingData, id: dataFetch.id};
+      dispatch(setBooking(newData));
       ToastAndroid.show('Đặt xe thành công!', 4000);
     } else {
       ToastAndroid.show('Đặt xe thất bại!', 4000);
@@ -163,7 +135,6 @@ const BookingDetail = () => {
     setLoading(false);
   };
   const onConfirmTask = async () => {
-    console.log('A. ', job.status);
     let jobUpdate = job;
     switch (job.status) {
       case 'created':
@@ -174,11 +145,11 @@ const BookingDetail = () => {
         dispatch(resetBooking());
         break;
     }
-    dispatch(setStatusBooking(jobUpdate.status));
+    console.log('Change Status Booking: ', job.status);
     dispatch(setBooking(jobUpdate));
     await firestore()
       .collection(JOB_COLLECTION)
-      .doc(jobId)
+      .doc(job.id)
       .update(jobUpdate)
       .then(() => {
         if (jobUpdate.status === 'complete') {
@@ -191,14 +162,12 @@ const BookingDetail = () => {
       });
   };
   const onCancelTask = async () => {
-    dispatch(setStatusBooking(''));
     dispatch(resetBooking());
     await firestore()
       .collection(JOB_COLLECTION)
-      .doc(jobId)
+      .doc(job.id)
       .update({...job, status: 'cancel'})
       .then(() => {
-        dispatch(resetBooking());
         navigation.navigate(ROUTES.mainSaler as never);
       })
       .catch(() => {
@@ -207,58 +176,104 @@ const BookingDetail = () => {
   };
   // --------------- END of EVENT CLICK ----------------
 
-  // --------------- FIREBASE QUERY ----------------
-  const onQueryIdDriverSuccess = (
-    data: FirebaseFirestoreTypes.DocumentSnapshot<FirebaseFirestoreTypes.DocumentData>,
-  ) => {
-    console.log('Driver Id: ', data.data()?.driver);
-    if (data.data()?.driver) {
-      ToastAndroid.show('Your Booking is Accepted!', 4000);
-    }
-    dispatch(setBooking({...job, driver: data.data()?.driver || ''}));
+  const driverInfo = () => {
+    const name = driver.username;
+    const sex = driver.sex;
+    const sdt = driver.phone;
+    return `Name: ${name} \n Giới tính: ${sex} \n Số điện thoại: ${sdt}`;
   };
-  const onQueryIdDriverFail = () => {
-    console.log('Query Driver Id Failed...');
+
+  const onCameraToDriverLocation = () => {
+    setCamera({
+      ...camera,
+      center: {
+        latitude: driverLocation.coordinate.latitude as never,
+        longitude: driverLocation.coordinate.longitude as never,
+      },
+    });
   };
-  const onQueryDriverLocationSuccess = (
-    data: FirebaseFirestoreTypes.QuerySnapshot<FirebaseFirestoreTypes.DocumentData>,
-  ) => {
-    console.log(data.size);
-    if (!data.empty) {
-      if (data.docs[0]?.data()?.geoLocation?.region) {
-        setDriverLocation({
-          ...driverLocation,
-          coordinate: {...data.docs[0]?.data()?.geoLocation.region},
-        });
-      }
-    }
-  };
-  const onQueryDriverLocationFail = () => {
-    console.log('Query Driver Location Failed...');
-  };
-  // --------------- END of FIREBASE QUERY ----------------
+
+  useEffect(() => {
+    console.log('status changed: ', job.status);
+    return () => {};
+  }, [job.status]);
+
+  // On Snapshot If Driver Accept Booking
+  useEffect(() => {
+    console.log('onSnapshot Get Driver Location with Id: ', driverId);
+    const subscriber = firestore()
+      .collection(USER_LOCATION_COLLECTION)
+      .doc(driverId)
+      .onSnapshot(data => {
+        if (data.exists) {
+          console.log('Update Geolocation Driver');
+          if (data?.data()?.geoLocation?.region) {
+            setDriverLocation({
+              ...driverLocation,
+              coordinate: {...data?.data()?.geoLocation.region},
+            });
+          } else {
+            setDriverLocation({
+              ...driverLocation,
+              coordinate: {...data?.data()?.geoLocation},
+            });
+          }
+        }
+      });
+    return () => {
+      subscriber();
+    };
+  }, [driverId]);
+
+  // Get Driverr Location Id
+  useEffect(() => {
+    console.log('Get Driver Id Location');
+    let subscriber: any;
+    firestore()
+      .collection(USER_LOCATION_COLLECTION)
+      .where(ID_USERLOCATION_FIELD, '==', job.driver)
+      .get()
+      .then(data => {
+        if (!data.empty) {
+          setDriverId(data.docs[0].id);
+        } else {
+          console.log('Data is Empty');
+        }
+      });
+    return () => {};
+  }, [job.driver]);
+
+  // On Snapshot If Id is Existed -> Get Driver Booking
+  useEffect(() => {
+    const subscriber = firestore()
+      .collection(JOB_COLLECTION)
+      .doc(job.id)
+      .onSnapshot(data => {
+        console.log('onSnapshot Get Driver Id');
+        if (data.data()?.driver) {
+          console.log('Your Booking is Accepted!');
+          setAlertDriverAccept(true);
+          firestore() // Get Driver Id
+            .collection(USER_COLLECTION)
+            .doc(data.data()?.driver)
+            .get()
+            .then(d => {
+              console.log(' Get Driver Id: ', data.data()?.driver);
+              setDriver(d.data() as IUserParams);
+            });
+        }
+        dispatch(setBooking({...job, driver: data.data()?.driver || ''}));
+      });
+    return () => {
+      subscriber();
+    };
+  }, [job.id]);
 
   useEffect(() => {
     dispatch(setCurrentPickLocation('departure'));
-
     setupMapView();
-    setupBooking();
     fetchPolyline();
 
-    let subscriber: any = null;
-    if (job.driver) {
-      console.log('Get Driver Location');
-      subscriber = firestore()
-        .collection(USER_LOCATION_COLLECTION)
-        .where(ID_USERLOCATION_FIELD, '==', job.driver)
-        .onSnapshot(onQueryDriverLocationSuccess, onQueryDriverLocationFail);
-    } else {
-      console.log('Get Driver Id');
-      subscriber = firestore()
-        .collection(JOB_COLLECTION)
-        .doc(jobId)
-        .onSnapshot(onQueryIdDriverSuccess, onQueryIdDriverFail);
-    }
     const backHandler = BackHandler.addEventListener(
       'hardwareBackPress',
       () => {
@@ -267,103 +282,114 @@ const BookingDetail = () => {
       },
     );
     return () => {
-      subscriber();
       backHandler.remove();
     };
   }, []);
 
   return (
     <View style={{flex: 1}}>
-      {loading ? (
-        <ActivityIndicator
-          style={{flex: 1}}
-          color={COLOR_MAIN_TOPIC}
-          size="large"
+      <ActivityIndicator
+        style={{flex: 1, display: loading ? 'flex' : 'none'}}
+        color={COLOR_MAIN_TOPIC}
+        size="large"
+      />
+      <View style={{flex: 1}}>
+        <ConfirmPayment
+          title={'Người lái xe nhận đơn của bạn'}
+          content={`Name: ${driver.username} \n Giới tính: ${driver.sex} \n Số điện thoại: ${driver.phone}`}
+          style={{height: 200}}
+          visible={alertDriverAccept}
+          setVisible={setAlertDriverAccept}
+          onConfirm={() => setAlertDriverAccept(false)}
         />
-      ) : (
-        <View style={{flex: 1}}>
-          <View
-            style={{
-              ...styles.section1,
-              display: statusBooking ? 'none' : 'flex',
-            }}>
-            <View>
-              <Text>Loại xe: </Text>
-              <SelectDropdown
-                data={['motor', 'car']}
-                onSelect={(item, index) => {
-                  console.log(item);
-                }}
-                buttonTextAfterSelection={(item, index) => {
-                  switch (item) {
-                    case 'motor':
-                      return 'Xe máy';
-                    case 'car':
-                      return 'Ô tô';
-                    default:
-                      return '';
-                  }
-                }}
-                rowTextForSelection={(item, index) => {
-                  switch (item) {
-                    case 'motor':
-                      return 'Xe máy';
-                    case 'car':
-                      return 'Ô tô';
-                    default:
-                      return '';
-                  }
-                }}
-                buttonStyle={{...styles.button, height: 43}}
-                buttonTextStyle={styles.textButton}
-                rowStyle={{padding: 10}}
-                defaultValueByIndex={0}
-                dropdownIconPosition="right"
-              />
-            </View>
-            <View>
-              <Text>Giá: </Text>
-              <Text style={styles.feeText}>{job.fee} đ</Text>
-            </View>
-            <Pressable
-              onPress={onConfirmBooking}
-              style={{...styles.button, backgroundColor: '#ff1c27'}}>
-              <Text style={styles.textButton}>Đặt xe</Text>
-            </Pressable>
+        <View
+          style={{
+            ...styles.section1,
+            display: job.status ? 'none' : 'flex',
+          }}>
+          <View>
+            <Text>Loại xe: </Text>
+            <SelectDropdown
+              data={['motor', 'car']}
+              onSelect={(item, index) => {
+                console.log(item);
+              }}
+              buttonTextAfterSelection={(item, index) => {
+                switch (item) {
+                  case 'motor':
+                    return 'Xe máy';
+                  case 'car':
+                    return 'Ô tô';
+                  default:
+                    return '';
+                }
+              }}
+              rowTextForSelection={(item, index) => {
+                switch (item) {
+                  case 'motor':
+                    return 'Xe máy';
+                  case 'car':
+                    return 'Ô tô';
+                  default:
+                    return '';
+                }
+              }}
+              buttonStyle={{...styles.button, height: 43, width: 100}}
+              buttonTextStyle={styles.textButton}
+              rowStyle={{padding: 10}}
+              defaultValueByIndex={0}
+              dropdownIconPosition="right"
+            />
           </View>
-          <MapView
-            showsCompass={false}
-            provider={PROVIDER_GOOGLE}
-            customMapStyle={standard_custom_map}
-            camera={camera}
-            style={styles.mapContainer}>
-            {markers.map((marker, index) => (
-              <Marker
-                key={index}
-                coordinate={marker.coordinate}
-                title={marker.title}
-                pinColor={marker.pinColor}
-              />
-            ))}
+          <View>
+            <Text>Khoảng cách: </Text>
+            <Text>{job.distance} km</Text>
+          </View>
+          <View>
+            <Text>Giá: </Text>
+            <Text style={styles.feeText}>{job.fee} đ</Text>
+          </View>
+          <Pressable
+            onPress={onConfirmBooking}
+            style={{...styles.button, backgroundColor: '#ff1c27'}}>
+            <Text style={styles.textButton}>Đặt xe</Text>
+          </Pressable>
+        </View>
+        <MapView
+          showsCompass={false}
+          provider={PROVIDER_GOOGLE}
+          customMapStyle={standard_custom_map}
+          camera={camera}
+          style={{
+            ...styles.mapContainer,
+            height: job.status && job.driver ? '75%' : '85%',
+          }}>
+          {markers.map((marker, index) => (
             <Marker
-              coordinate={driverLocation.coordinate}
-              title={'Địa điểm người lái xe'}
-              pinColor="green"
-              style={{display: job.driver ? 'flex' : 'none'}}
+              key={index}
+              coordinate={marker.coordinate}
+              title={marker.title}
+              pinColor={marker.pinColor}
             />
-            <Polyline
-              coordinates={polylines}
-              strokeColor="#000" // fallback for when `strokeColors` is not supported by the map-provider
-              strokeWidth={6}
-            />
-          </MapView>
-          <View
-            style={{
-              ...styles.section1,
-              display: statusBooking ? 'flex' : 'none',
-              height: 50,
-              alignItems: 'center',
-            }}>
+          ))}
+          <Marker
+            coordinate={driverLocation.coordinate}
+            title={'Địa điểm người lái xe'}
+            pinColor="green"
+            style={{display: job.driver ? 'flex' : 'none'}}
+          />
+          <Polyline
+            coordinates={polylines}
+            strokeColor="#000" // fallback for when `strokeColors` is not supported by the map-provider
+            strokeWidth={6}
+          />
+        </MapView>
+        <View
+          style={{
+            ...styles.sectionBelow,
+            display: job.status !== '' ? 'flex' : 'none',
+          }}>
+          <View style={{...styles.section1}}>
             <Pressable
               onPress={onCancelTask}
               style={{
@@ -373,26 +399,47 @@ const BookingDetail = () => {
               <Text style={{...styles.textButton}}>Hủy đơn</Text>
             </Pressable>
             <Pressable
-              onPress={onConfirmTask}
+              onPress={() => setAlertDriverAccept(true)}
               style={{
                 ...styles.button,
-                display: statusBooking === 'created' ? 'flex' : 'none',
-                width: 200,
+                backgroundColor: '#ff0000',
               }}>
-              <Text style={{...styles.textButton}}>Người lái xe đã đón</Text>
+              <Text style={{...styles.textButton}}>Thông tin</Text>
+            </Pressable>
+          </View>
+          <View style={{...styles.section1}}>
+            <Pressable
+              onPress={onCameraToDriverLocation}
+              style={{
+                ...styles.button,
+                display:
+                  job.status === 'created' && job.driver ? 'flex' : 'none',
+              }}>
+              <Text style={{...styles.textButton}}>Vị trí lái xe</Text>
             </Pressable>
             <Pressable
               onPress={onConfirmTask}
               style={{
                 ...styles.button,
-                display: statusBooking === 'inprogressing' ? 'flex' : 'none',
-                width: 200,
+                display:
+                  job.status === 'created' && job.driver ? 'flex' : 'none',
               }}>
-              <Text style={{...styles.textButton}}>Đã tới nơi</Text>
+              <Text style={{...styles.textButton}}>Xác nhận đã đón</Text>
+            </Pressable>
+            <Pressable
+              onPress={onConfirmTask}
+              style={{
+                ...styles.button,
+                display:
+                  job.status === 'inprogressing' && job.driver
+                    ? 'flex'
+                    : 'none',
+              }}>
+              <Text style={{...styles.textButton}}>Xác nhận đến nhà</Text>
             </Pressable>
           </View>
         </View>
-      )}
+      </View>
     </View>
   );
 };
@@ -402,13 +449,12 @@ export default BookingDetail;
 const styles = StyleSheet.create({
   mapContainer: {
     width: '100%',
-    height: '90%',
+    height: '75%',
   },
   button: {
     padding: 10,
     backgroundColor: COLOR_MAIN_TOPIC,
     borderRadius: 8,
-    width: 100,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -416,12 +462,15 @@ const styles = StyleSheet.create({
   section1: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 10,
-    marginTop: 10,
+    alignItems: 'center',
+    padding: 10,
   },
   feeText: {
     color: '#000',
     fontSize: 19,
     alignSelf: 'center',
+  },
+  sectionBelow: {
+    padding: 10,
   },
 });

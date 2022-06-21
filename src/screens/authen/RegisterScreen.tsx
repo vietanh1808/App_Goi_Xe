@@ -10,9 +10,13 @@ import {
   View,
   ScrollView,
   ActivityIndicator,
+  ToastAndroid,
 } from 'react-native';
-import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {TextInput} from 'react-native-gesture-handler';
+import React, {useRef, useState} from 'react';
+import {
+  NativeViewGestureHandlerProperties,
+  TextInput,
+} from 'react-native-gesture-handler';
 import {
   AUTHOR_FIELD,
   COLOR_MAIN_TOPIC,
@@ -24,12 +28,12 @@ import {
 } from '../../constants';
 import {IRegisterForm, IRegisterValidate} from '../../models/register';
 import {useNavigation} from '@react-navigation/native';
-import {ROUTES} from '../../configs/Routes';
 import DatePicker from 'react-native-date-picker';
 import SelectDropdown from 'react-native-select-dropdown';
 import {isValidRegisterForm, validateRegisterForm} from './ultils/validate';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
+import {ROUTES} from '../../configs/Routes';
 
 const RegisterScreen = () => {
   const navigation = useNavigation();
@@ -76,7 +80,8 @@ const RegisterScreen = () => {
             console.log('ADD DONE!');
             setLoading(false);
             setStatus('');
-            // navigation.navigate(ROUTES.login as never);
+            ToastAndroid.show('Đăng ký thành công', ToastAndroid.LONG);
+            navigation.navigate(ROUTES.login as never);
           }
         } catch (error: any) {
           console.log(error);
@@ -134,7 +139,7 @@ const RegisterScreen = () => {
               styles.input,
               {
                 elevation: focus === 'email' ? 10 : 0,
-                borderColor: validate.email ? '#ff1100' : '#000',
+                borderColor: validate.email ? COLOR_MAIN_TOPIC : '#000',
               },
             ]}
             placeholder="Nhập Email..."
@@ -162,7 +167,7 @@ const RegisterScreen = () => {
               styles.input,
               {
                 elevation: focus === 'username' ? 10 : 0,
-                borderColor: validate.username ? '#ff1100' : '#000',
+                borderColor: validate.username ? COLOR_MAIN_TOPIC : '#000',
               },
             ]}
             placeholder="Nhập tên..."
@@ -187,7 +192,7 @@ const RegisterScreen = () => {
               styles.input,
               {
                 elevation: focus === 'password' ? 10 : 0,
-                borderColor: validate.password ? '#ff1100' : '#000',
+                borderColor: validate.password ? COLOR_MAIN_TOPIC : '#000',
               },
             ]}
             placeholder="Nhập Mật khẩu..."
@@ -210,7 +215,7 @@ const RegisterScreen = () => {
                 flexDirection: 'row',
                 alignItems: 'center',
                 elevation: focus === 'phone' ? 10 : 0,
-                borderColor: validate.phone ? '#ff1100' : '#000',
+                borderColor: validate.phone ? COLOR_MAIN_TOPIC : '#000',
               },
             ]}>
             <Text style={styles.labelPhone}>+84</Text>
@@ -244,7 +249,7 @@ const RegisterScreen = () => {
               styles.input,
               {
                 elevation: focus === 'birthday' ? 10 : 0,
-                borderColor: validate.birthday ? '#ff1100' : '#000',
+                borderColor: validate.birthday ? COLOR_MAIN_TOPIC : '#000',
               },
             ]}
             placeholder="Nhập Ngày sinh"
@@ -259,7 +264,6 @@ const RegisterScreen = () => {
             }
             onPressIn={e => setModal({datePicker: !modal.datePicker})}
           />
-
           <DatePicker
             modal
             open={modal.datePicker}
@@ -308,7 +312,7 @@ const RegisterScreen = () => {
             }}
             buttonStyle={{
               ...styles.select,
-              borderColor: validate.sex ? '#ff1100' : '#000',
+              borderColor: validate.sex ? COLOR_MAIN_TOPIC : '#000',
             }}
             buttonTextStyle={{color: '#fff'}}
             defaultButtonText="Chọn giới tính"
@@ -349,12 +353,50 @@ const RegisterScreen = () => {
               }
             }}
             buttonStyle={{
-              borderColor: validate.authorization ? '#ff1100' : '#000',
+              borderColor: validate.authorization ? COLOR_MAIN_TOPIC : '#000',
               ...styles.select,
             }}
             buttonTextStyle={{color: '#fff'}}
             defaultButtonText="Chọn kiểu người dùng"
           />
+
+          {/* Car type Field */}
+          <SelectDropdown
+            ref={dropdownRef}
+            data={['m', 'c']}
+            onSelect={(data, index) => {
+              setFormValue({...formValue, carType: data});
+            }}
+            buttonTextAfterSelection={(selectedItem, index) => {
+              switch (selectedItem) {
+                case 'm':
+                  return 'Xe máy';
+                case 'c':
+                  return 'Ô tô';
+                default:
+                  return '';
+              }
+            }}
+            rowTextForSelection={(item, index) => {
+              switch (item) {
+                case 'm':
+                  return 'Xe máy';
+                case 'c':
+                  return 'Ô tô';
+                default:
+                  return '';
+              }
+            }}
+            buttonStyle={{
+              borderColor: COLOR_MAIN_TOPIC,
+              ...styles.select,
+              display: formValue.authorization === 'd' ? 'flex' : 'none',
+            }}
+            buttonTextStyle={{color: '#fff'}}
+            defaultButtonText="Chọn kiểu xe"
+          />
+
+          {/* End All FIELD Register */}
 
           <Pressable
             style={[styles.input, styles.loginButton]}

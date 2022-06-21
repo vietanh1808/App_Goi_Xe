@@ -54,7 +54,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 10,
     justifyContent: 'space-around',
-    flex: 1,
   },
   button: {
     padding: 15,

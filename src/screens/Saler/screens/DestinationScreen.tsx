@@ -1,13 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import {
-  NativeSyntheticEvent,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInputEndEditingEventData,
-  View,
-  ScrollView,
-} from 'react-native';
+import {Pressable, StyleSheet, Text, View, ScrollView} from 'react-native';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {TextInput, TouchableOpacity} from 'react-native-gesture-handler';
 import {useNavigation} from '@react-navigation/native';
@@ -74,7 +66,7 @@ const DestinationScreen = () => {
                   };
                   dispatch(setBooking({...job, destination: data}));
                   dispatch(setCurrentPickLocation('destination'));
-                  navigation.goBack();
+                  navigation.navigate(ROUTES.mainSaler as never);
                 }}
                 style={{...styles.dropdownButton}}>
                 <Text>{f.place_name}</Text>

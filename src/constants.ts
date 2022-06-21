@@ -1,7 +1,7 @@
 import {Dimensions, StatusBar} from 'react-native';
 import {IUserParams} from './models/Saler';
 import {IJobParams} from './models/Job';
-import {Region} from 'react-native-maps';
+import {Camera, Region} from 'react-native-maps';
 
 // Map
 export const MIN_ZOOM_MAP = 5;
@@ -32,26 +32,6 @@ export const sourceImage = {
   },
 };
 
-// Init Value
-export const initUserInfor: IUserParams = {
-  username: '',
-  password: '',
-  email: '',
-  status: 'off',
-  authorization: '',
-  birthday: '',
-  sex: '',
-  phone: '',
-};
-
-export const CloudBookingData = [
-  {id: 1, title: 'Ngõ 11 Duy Tân'},
-  {id: 2, title: '200 Đại Từ'},
-  {id: 3, title: '15 Cầu Thanh Trì'},
-  {id: 4, title: 'Văn Điển'},
-  {id: 5, title: '68 Nguyễn Xiển'},
-];
-
 // Firebase
 export const USER_COLLECTION = 'Users';
 export const JOB_COLLECTION = 'Jobs';
@@ -72,7 +52,7 @@ export const DISTANCE_FIELD = 'distance';
 export const DRIVER_FIELD = 'driver';
 export const FEE_FIELD = 'feee';
 export const TIMESTAMP_FIELD = 'timestamp';
-export const ID_USERLOCATION_FIELD = 'userInfo';
+export const ID_USERLOCATION_FIELD = 'idUserInfo';
 
 // AsyncStorage
 export const CURRENT_USER = 'currentUser';
@@ -80,19 +60,53 @@ export const CURRENT_USER = 'currentUser';
 // Color
 export const GREY_COLOR = '#C0C0C0';
 
+// Init Value
+export const initUserInfor: IUserParams = {
+  username: '',
+  password: '',
+  email: '',
+  status: 'off',
+  authorization: '',
+  birthday: '',
+  sex: '',
+  phone: '',
+  carType: '',
+};
+
+export const CloudBookingData = [
+  {id: 1, title: 'Ngõ 11 Duy Tân'},
+  {id: 2, title: '200 Đại Từ'},
+  {id: 3, title: '15 Cầu Thanh Trì'},
+  {id: 4, title: 'Văn Điển'},
+  {id: 5, title: '68 Nguyễn Xiển'},
+];
+
 export const defaultLocation: Region = {
   latitude: 21.0031,
   longitude: 105.8201,
   latitudeDelta: 0,
   longitudeDelta: 0,
 };
+
+export const defaultCamera: Camera = {
+  center: {
+    latitude: 37.78825,
+    longitude: -122.4324,
+  },
+  pitch: PITCH_MAP,
+  altitude: 0,
+  zoom: 15,
+  heading: 10,
+};
+
 export const jobInitValue: IJobParams = {
+  id: '',
   car_type: 'motor',
   departure: {place_name: '', region: defaultLocation},
   destination: {place_name: '', region: defaultLocation},
   distance: 0,
   driver: '',
   fee: 0,
-  status: 'created',
+  status: '',
   timestamp: 0,
 };

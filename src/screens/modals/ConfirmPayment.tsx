@@ -31,10 +31,11 @@ const ConfirmPayment = (props: Props) => {
         <View style={{...styles.viewBody}}>
           <Text style={{...styles.header}}>{props.title}</Text>
           <View style={{...styles.body}}>
-            <Pressable onPress={props.onConfirm} style={{...styles.button}}>
-              <Text style={{...styles.textButton}}>OK</Text>
-            </Pressable>
+            <Text style={{...styles.textbody}}>{props.content}</Text>
           </View>
+          <Pressable onPress={props.onConfirm} style={{...styles.button}}>
+            <Text style={{...styles.textButton}}>OK</Text>
+          </Pressable>
         </View>
       </View>
     </Modal>
@@ -48,7 +49,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 10,
     justifyContent: 'space-around',
-    flex: 1,
+  },
+  textbody: {
+    fontSize: 18,
   },
   button: {
     padding: 15,

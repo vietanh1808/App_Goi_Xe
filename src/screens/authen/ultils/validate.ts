@@ -33,6 +33,8 @@ const validRegister = (value: string, name: string) => {
       return 'Yêu cầu chọn giới tính!';
     case 'author':
       return 'Yêu cầu chọn kiểu người dùng!';
+    case 'carType':
+      return 'Yêu cầu chọn loại xe!';
     default:
       return '';
   }

@@ -1,10 +1,10 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import {
   BackHandler,
+  Linking,
   Pressable,
   StyleSheet,
   Text,
-  ToastAndroid,
   View,
 } from 'react-native';
 import React, {useEffect} from 'react';
@@ -22,19 +22,19 @@ import Geolocation, {
 } from '@react-native-community/geolocation';
 import {useSelector} from 'react-redux';
 import firestore from '@react-native-firebase/firestore';
+import {IUserLocation} from '../../../models/Saler';
+import ConfirmExit from '../../modals/ConfirmExit';
+import {resetBooking} from '../../../redux/reducers/jobReducer';
 
 const HomeSaler = () => {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
   const user = useSelector((state: AppState) => state.profile);
+  const [alertModal, setAlertModal] = React.useState(false);
 
-  const onBackHandler = () => {
-    BackHandler.exitApp();
-    return true;
-  };
-
-  const updateUserLocation = (position: GeolocationResponse) => {
-    const dataUpdate = {
+  const updateUserLocation = async (position: GeolocationResponse) => {
+    const dataUpdate: IUserLocation = {
+      id: '',
       idUserInfo: user.id || '',
       geoLocation: {
         region: {
@@ -60,41 +60,69 @@ const HomeSaler = () => {
             .doc(id)
             .update(dataUpdate)
             .then(() => console.log('Update User Location Success!'))
-            .catch(error =>
-              console.log('Update User Location Failed: ', error),
-            );
+            .catch(error => console.log('Update User Location Failed: ', error))
+            .finally(() => {
+              navigation.navigate(ROUTES.mainSaler as never);
+            });
         } else {
+          let newData: IUserLocation = dataUpdate;
           firestore()
             .collection(USER_LOCATION_COLLECTION)
             .add(dataUpdate)
-            .then(() => console.log('Add User Location Success!'))
+            .then(d => {
+              console.log('Add User Location Success!');
+              newData = {...dataUpdate, id: d.id};
+              dispatch(setUserLocation(newData));
+            })
             .catch(error => console.log('Add User Location Failed: ', error));
+
+          firestore()
+            .collection(USER_LOCATION_COLLECTION)
+            .doc(newData.id)
+            .update(newData)
+            .then(() => {
+              console.log('Update Id Location Success');
+            })
+            .catch(e => {
+              console.log('Update Id Location Failed');
+              console.log(e);
+            })
+            .finally(() => {
+              navigation.navigate(ROUTES.mainSaler as never);
+            });
         }
       });
   };
 
-  useEffect(() => {
+  const checkUserLocation = () => {
     Geolocation.getCurrentPosition(
       position => {
-        // updateUserLocation(position);
+        updateUserLocation(position);
       },
-      error => {
-        console.log('Faled to Get Current myLocation!... ', error);
-        ToastAndroid.show('Bạn cần cấp quyền truy cập vị trí!', 3000);
+      () => {
+        setAlertModal(true); // Open Setting To Allow GPS
       },
     );
+  };
 
-    return () => {};
+  useEffect(() => {
+    // checkUserLocation();
   }, []);
 
   return (
     <View style={styles.body}>
+      <ConfirmExit
+        title="Cảnh báo"
+        content="Bạn cần cấp quyền truy cập địa chỉ"
+        onConfirm={async () => {
+          setAlertModal(false);
+          Linking.openSettings();
+        }}
+        visible={alertModal}
+        setVisible={setAlertModal}
+      />
       <View>
-        <Pressable
-          style={{...styles.button}}
-          onPress={() => {
-            navigation.navigate(ROUTES.mainSaler as never);
-          }}>
+        <Pressable style={{...styles.button}} onPress={checkUserLocation}>
           <Text style={{...styles.textButton}}>Đặt xe</Text>
         </Pressable>
         <Pressable style={{...styles.button}}>
@@ -103,6 +131,7 @@ const HomeSaler = () => {
         <Pressable
           style={{...styles.button}}
           onPress={() => {
+            dispatch(resetBooking());
             BackHandler.exitApp();
           }}>
           <Text style={{...styles.textButton}}>Thoát</Text>

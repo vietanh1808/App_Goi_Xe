@@ -8,6 +8,7 @@ export interface IJobParams {
   distance: number;
   driver: string;
   fee: number;
-  status: 'created' | 'complete' | 'accept' | 'cancel' | 'inprogressing';
+  status: '' | 'created' | 'complete' | 'accept' | 'cancel' | 'inprogressing';
   timestamp: number;
+  id: string;
 }

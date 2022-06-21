@@ -14,7 +14,6 @@ import DetailUser from '../screens/Saler/screens/DetailUser';
 import auth from '@react-native-firebase/auth';
 import BookingDetailDriver from '../screens/Driver/BookingDetailDriver';
 import BookingDetail from '../screens/Saler/screens/BookingDetail';
-import OnWork from '../screens/Driver/OnWork';
 import RouteToDeparture from '../screens/Driver/RouteToDeparture';
 import MainSaler from '../screens/Saler/screens/MainSaler';
 const Stack = createStackNavigator();
@@ -41,6 +40,25 @@ const StackScreen = () => {
 
   return (
     <Stack.Navigator initialRouteName={authenScreen()}>
+      {/* ---------- AUTHENTICATION SCREEN ZONE ---------- */}
+      <Stack.Screen
+        name={ROUTES.login}
+        options={{
+          headerShown: false,
+        }}
+        component={LoginScreen}
+      />
+      <Stack.Screen
+        name={ROUTES.register}
+        options={{
+          headerShown: false,
+        }}
+        component={RegisterScreen}
+      />
+      {/* ---------- End Of AUTHENTICATION SCREEN ZONE ---------- */}
+
+      {/* ---------- SALER SCREEN ZONE ---------- */}
+
       <Stack.Screen
         name={ROUTES.destinationSaler}
         component={DestinationScreen}
@@ -60,20 +78,6 @@ const StackScreen = () => {
         component={MainSaler}
       />
       <Stack.Screen
-        name={ROUTES.login}
-        options={{
-          headerShown: false,
-        }}
-        component={LoginScreen}
-      />
-      <Stack.Screen
-        name={ROUTES.register}
-        options={{
-          headerShown: false,
-        }}
-        component={RegisterScreen}
-      />
-      <Stack.Screen
         options={{
           headerTransparent: true,
           headerTitleStyle: {display: 'none'},
@@ -82,16 +86,19 @@ const StackScreen = () => {
         component={DetailUser}
       />
       <Stack.Screen
+        options={{}}
+        name={ROUTES.detaiBookingSaler}
+        component={BookingDetail}
+      />
+      {/* ---------- End Of SALER SCREEN ZONE ---------- */}
+
+      {/* ---------- DRIVER SCREEN ZONE ---------- */}
+      <Stack.Screen
         name={ROUTES.mainDriver}
         options={{
           headerBackTitleVisible: false,
         }}
         component={HomeDriver}
-      />
-      <Stack.Screen
-        options={{}}
-        name={ROUTES.detaiBookingSaler}
-        component={BookingDetail}
       />
       <Stack.Screen
         options={{
@@ -102,19 +109,13 @@ const StackScreen = () => {
         component={BookingDetailDriver}
       />
       <Stack.Screen
-        name={ROUTES.onWorkDriver}
-        options={{
-          headerShown: false,
-        }}
-        component={OnWork}
-      />
-      <Stack.Screen
         name={ROUTES.routeToDeparture}
         options={{
           headerShown: false,
         }}
         component={RouteToDeparture}
       />
+      {/* ---------- End Of DRIVER SCREEN ZONE ---------- */}
     </Stack.Navigator>
   );
 };
